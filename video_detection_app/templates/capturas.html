@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Capturas - Safecam</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        .gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .video-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        video {
+            width: 300px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+        button.delete-btn {
+            margin-top: 5px;
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .top-bar button {
+            padding: 6px 12px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <h1>Capturas</h1>
+        <button onclick="window.location.href='/'">Voltar</button>
+    </div>
+
+    <div class="gallery">
+        {% for video in imagens %}
+            <div class="video-card">
+                <video controls>
+                    <source src="{{ url_for('static', filename='capturas/' + video) }}" type="video/webm">
+                    O teu navegador não suporta vídeo.
+                </video>
+                <button class="delete-btn" onclick="deleteVideo('{{ video }}')">Eliminar</button>
+            </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        function deleteVideo(filename) {
+            if (confirm("Tens a certeza que queres eliminar este vídeo?")) {
+                fetch(`/delete/${filename}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert("Erro ao eliminar o vídeo.");
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

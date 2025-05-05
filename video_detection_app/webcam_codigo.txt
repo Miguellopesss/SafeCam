@@ -1,0 +1,86 @@
+from flask import Flask, render_template, Response
+from flask_socketio import SocketIO, emit
+import cv2
+import time
+import warnings
+from ultralytics import YOLO
+import torch
+from pathlib import Path
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+# Inicializar Flask + SocketIO
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+def gen_frames():
+    # Carregar modelo YOLO11n da pasta local
+    model_path = Path("yolo11n.pt")
+    model = YOLO(str(model_path))
+
+    # Usar GPU se disponível
+    if torch.cuda.is_available():
+        model.to("cuda")
+        print("Modelo carregado na GPU (CUDA).")
+    else:
+        print("CUDA não disponível. A correr na CPU.")
+
+    cap = cv2.VideoCapture(0)
+
+    if not cap.isOpened():
+        print("Erro ao aceder à webcam.")
+        return
+
+    print("Webcam iniciada. A detetar pessoas...")
+    last_alert_time = time.time()
+    frame_count = 0
+    detection_results = None
+
+    while True:
+        success, frame = cap.read()
+        if not success:
+            print("Erro ao capturar o frame da webcam.")
+            break
+
+        frame_count += 1
+
+        # Fazer deteção a cada 3 frames para melhor desempenho
+        if frame_count % 3 == 0:
+            detection_results = model(frame, verbose=False)[0]
+
+        if detection_results is not None:
+            for box, cls_id, conf in zip(detection_results.boxes.xyxy,
+                                         detection_results.boxes.cls,
+                                         detection_results.boxes.conf):
+                if int(cls_id) == 0:  # Classe "pessoa"
+                    x1, y1, x2, y2 = map(int, box)
+                    confidence = float(conf) * 100
+                    label = f"Pessoa {confidence:.0f}%"
+
+                    # Desenhar a caixa e a label
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.putText(frame, label, (x1, y1 - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+                    # Emitir alerta se passaram 5 segundos
+                    current_time = time.time()
+                    if current_time - last_alert_time >= 5:
+                        print("Pessoa detetada!")
+                        socketio.emit('alert', {'message': 'Pessoa detetada!'})
+                        last_alert_time = current_time
+
+        # Codificar frame para enviar via MJPEG
+        ret, buffer = cv2.imencode('.jpg', frame)
+        frame_bytes = buffer.tobytes()
+        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+if __name__ == '__main__':
+    socketio.run(app, debug=True, host='0.0.0.0')

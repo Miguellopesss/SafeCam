@@ -1,0 +1,94 @@
+from flask import Flask, render_template, Response
+from flask_socketio import SocketIO, emit
+import cv2
+import time
+import warnings
+from ultralytics import YOLO
+import torch
+from pathlib import Path
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+def gen_frames():
+    model_path = Path("yolo11n.pt")
+    model = YOLO(str(model_path))
+
+    #video_path = "video2.mp4"
+    #cap = cv2.VideoCapture(video_path)
+
+    cap = cv2.VideoCapture(0)  # Webcam (comentado)
+
+    if not cap.isOpened():
+        print("Erro ao abrir o vídeo ou aceder à webcam.")
+        return
+
+    print("A processar vídeo o mais rápido possível...")
+
+    frame_count = 0
+    detection_results = None
+    last_alert_time_by_type = {"Pessoa": 0, "Carro": 0}
+    alert_interval = 2  # segundos entre alertas por tipo
+
+    while True:
+        success, frame = cap.read()
+        if not success:
+            print("Fim do vídeo ou erro na captura.")
+            break
+
+        frame_count += 1
+        detected_types = set()
+
+        # Detetar a cada 3 frames
+        if frame_count % 3 == 0:
+            detection_results = model(frame, verbose=False)[0]
+
+        if detection_results is not None:
+            for box, cls_id, conf in zip(detection_results.boxes.xyxy,
+                                         detection_results.boxes.cls,
+                                         detection_results.boxes.conf):
+                cls = int(cls_id)
+                if cls in [0, 2]:  # 0: pessoa, 2: carro
+                    x1, y1, x2, y2 = map(int, box)
+                    confidence = float(conf) * 100
+
+                    if cls == 0:
+                        label = f"Pessoa {confidence:.0f}%"
+                        color = (0, 255, 0)
+                        detected_types.add("Pessoa")
+                    else:
+                        label = f"Carro {confidence:.0f}%"
+                        color = (255, 0, 0)
+                        detected_types.add("Carro")
+
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(frame, label, (x1, y1 - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+        # Emitir alertas separados por tipo
+        current_time = time.time()
+        for tipo in detected_types:
+            if current_time - last_alert_time_by_type[tipo] >= alert_interval:
+                mensagem = f"{tipo} detetado!"
+                print(mensagem)
+                socketio.emit('alert', {'message': mensagem})
+                last_alert_time_by_type[tipo] = current_time
+
+        ret, buffer = cv2.imencode('.jpg', frame)
+        frame_bytes = buffer.tobytes()
+        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+if __name__ == '__main__':
+    socketio.run(app, debug=True, host='0.0.0.0')

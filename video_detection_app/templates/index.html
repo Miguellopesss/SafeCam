@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safecam</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2px 20px;
+            padding-top: 10px;
+        }
+
+        .top-bar h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .top-bar button {
+            padding: 6px 12px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 10px 20px;
+        }
+
+        .video-box, .alert-box {
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            padding: 15px;
+            background-color: #f9f9f9;
+        }
+
+        .video-box {
+            width: 65%;
+        }
+
+        .alert-box {
+            width: 30%;
+        }
+
+        .video-box h2,
+        .alert-box h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .alert-list {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .alert-item {
+            padding: 10px;
+            background-color: #ffcc00;
+            color: #000;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <h1>Safecam</h1>
+        <button onclick="window.location.href='/capturas'">Ver Capturas</button>
+    </div>
+
+    <div class="container">
+        <div class="video-box">
+            <h2>Câmara ao Vivo</h2>
+            <img src="{{ url_for('video_feed') }}" width="100%" />
+        </div>
+        <div class="alert-box">
+            <h2>Alertas</h2>
+            <ul class="alert-list" id="alert-list"></ul>
+        </div>
+    </div>
+
+    <script>
+        const socket = io('http://' + document.domain + ':' + location.port, {
+            reconnection: true,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 1000
+        });
+
+        socket.on('connect', function () {
+            console.log("Conectado ao Socket.IO!");
+        });
+
+        socket.on('alert', function (data) {
+            console.log("Alerta recebido:", data.message);
+
+            const alertList = document.getElementById('alert-list');
+            const alertItem = document.createElement('li');
+            alertItem.className = 'alert-item';
+            alertItem.innerText = data.message;
+            alertList.appendChild(alertItem);
+
+            setTimeout(() => {
+                if (alertItem.parentNode) {
+                    alertList.removeChild(alertItem);
+                }
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
