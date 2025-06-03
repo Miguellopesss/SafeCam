@@ -2,84 +2,143 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>Capturas - Safecam</title>
+    <title>Capturas</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            padding: 20px;
             margin: 0;
+            background: #f2f2f2;
         }
-        h1 {
-            margin-bottom: 20px;
-        }
-        .gallery {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        .video-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        video {
-            width: 300px;
-            border: 2px solid #ccc;
-            border-radius: 8px;
-        }
-        button.delete-btn {
-            margin-top: 5px;
-            background-color: red;
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .top-bar {
+
+        .navbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            background-color: #20232a;
+            color: white;
+            padding: 12px 24px;
+            font-size: 18px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
         }
-        .top-bar button {
-            padding: 6px 12px;
+
+        .navbar .logo {
+            font-weight: bold;
+            font-size: 22px;
+            cursor: pointer;
+        }
+
+        .navbar .btn-voltar {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
             font-size: 14px;
             cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .navbar .btn-voltar:hover {
+            background-color: #2563eb;
+        }
+
+        h2 {
+            margin: 30px 40px 10px;
+            color: #1f2937;
+        }
+
+        .video-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 0 40px 40px;
+        }
+
+        .video-box {
+    background: white; /* fundo preto */
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 320px;
+    height: 260px; /* altura total: vídeo + botão */
+    box-shadow: 0 2px 5px rgba(35, 34, 34, 0.607);
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+video {
+    width: 100%;
+    height: 200px; /* altura fixa */
+    object-fit: contain;
+    background-color: white;
+    border-radius: 8px;
+}
+
+        .delete-button {
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: red;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .delete-button:hover {
+            background: darkred;
+        }
+
+        @media (max-width: 600px) {
+            h2 {
+                margin: 20px;
+                text-align: center;
+            }
+
+            .video-container {
+                padding: 0 20px 40px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <h1>Capturas</h1>
-        <button onclick="window.location.href='/'">Voltar</button>
-    </div>
 
-    <div class="gallery">
+    <nav class="navbar">
+        <div class="logo" onclick="window.location.href='/'">📹 Safecam</div>
+        <button class="btn-voltar" onclick="window.location.href='/'">Voltar</button>
+    </nav>
+
+    <h2>Vídeos Gravados</h2>
+
+    <div class="video-container">
         {% for video in imagens %}
-            <div class="video-card">
-                <video controls>
-                    <source src="{{ url_for('static', filename='capturas/' + video) }}" type="video/webm">
-                    O teu navegador não suporta vídeo.
-                </video>
-                <button class="delete-btn" onclick="deleteVideo('{{ video }}')">Eliminar</button>
-            </div>
+        <div class="video-box">
+            <video controls>
+                <source src="{{ url_for('static', filename='capturas/' + video) }}" type="video/webm">
+                O seu navegador não suporta vídeo.
+            </video>
+            <button class="delete-button" onclick="apagar('{{ video }}')">Apagar</button>
+        </div>
         {% endfor %}
     </div>
 
     <script>
-        function deleteVideo(filename) {
-            if (confirm("Tens a certeza que queres eliminar este vídeo?")) {
-                fetch(`/delete/${filename}`, {
-                    method: 'DELETE'
-                })
-                .then(response => {
-                    if (response.ok) {
-                        location.reload();
-                    } else {
-                        alert("Erro ao eliminar o vídeo.");
-                    }
-                });
+        function apagar(nome) {
+            if (confirm(`Tem certeza que quer apagar o vídeo "${nome}"?`)) {
+                fetch(`/delete/${nome}`, { method: 'DELETE' })
+                    .then(resp => {
+                        if (resp.ok) {
+                            alert("Vídeo apagado com sucesso.");
+                            location.reload();
+                        } else {
+                            alert("Erro ao apagar vídeo.");
+                        }
+                    });
             }
         }
     </script>

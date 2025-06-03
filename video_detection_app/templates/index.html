@@ -2,120 +2,148 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Safecam</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
     <style>
-        html, body {
+        body {
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
         }
 
-        .top-bar {
+        .navbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 2px 20px;
-            padding-top: 10px;
+            background-color: #20232a;
+            color: white;
+            padding: 12px 24px;
+            font-size: 18px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
 
-        .top-bar h1 {
-            margin: 0;
-            font-size: 24px;
+        .navbar .logo {
+            font-weight: bold;
+            font-size: 22px;
+            cursor: pointer;
         }
 
-        .top-bar button {
-            padding: 6px 12px;
+        .navbar .btn-capturas {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
             font-size: 14px;
             cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .navbar .btn-capturas:hover {
+            background-color: #2563eb;
         }
 
         .container {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding: 10px 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 40px 20px;
+            margin: auto;
+            max-width: 100%;
+            box-sizing: border-box;
         }
 
         .video-box, .alert-box {
-            border: 2px solid #ccc;
-            border-radius: 10px;
-            padding: 15px;
-            background-color: #f9f9f9;
-        }
-
-        .video-box {
-            width: 65%;
+            width: 100%;
+            max-width: 660px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
         }
 
         .alert-box {
-            width: 30%;
+            max-width: 300px;
         }
 
         .video-box h2,
         .alert-box h2 {
             margin-top: 0;
-            margin-bottom: 10px;
+            font-size: 18px;
+            color: #111827;
         }
 
-        .alert-list {
-            list-style-type: none;
-            padding: 0;
+        .video-box img {
+            border-radius: 8px;
+            width: 100%;
+            height: auto;
+            max-height: 80vh;
+            object-fit: contain;
         }
 
         .alert-item {
-            padding: 10px;
-            background-color: #ffcc00;
-            color: #000;
-            border-radius: 4px;
-            margin-bottom: 8px;
+            background: #facc15;
+            padding: 12px;
+            border-radius: 6px;
+            color: #1f2937;
+            font-weight: bold;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <h1>Safecam</h1>
-        <button onclick="window.location.href='/capturas'">Ver Capturas</button>
-    </div>
+    <nav class="navbar">
+        <div class="logo" onclick="window.location.href = '/'">📹 Safecam</div>
+        <button class="btn-capturas" onclick="window.location.href='/capturas'">Ver Capturas</button>
+    </nav>
 
     <div class="container">
         <div class="video-box">
             <h2>Câmara ao Vivo</h2>
-            <img src="{{ url_for('video_feed') }}" width="100%" />
+            <img src="{{ url_for('video_feed') }}" alt="Vídeo ao Vivo" />
         </div>
         <div class="alert-box">
             <h2>Alertas</h2>
-            <ul class="alert-list" id="alert-list"></ul>
+            <div id="alert-area"></div>
         </div>
     </div>
 
     <script>
-        const socket = io('http://' + document.domain + ':' + location.port, {
-            reconnection: true,
-            reconnectionAttempts: Infinity,
-            reconnectionDelay: 1000
-        });
+        const socket = io();
+        const alertArea = document.getElementById("alert-area");
+        const activeAlerts = {};
 
-        socket.on('connect', function () {
-            console.log("Conectado ao Socket.IO!");
-        });
+        function renderAlerts() {
+            alertArea.innerHTML = '';
+            for (const tipo in activeAlerts) {
+                const div = document.createElement('div');
+                div.className = 'alert-item';
+                div.style.backgroundColor = tipo === 'pessoa' ? '#22c55e' : '#3b82f6';
+                div.textContent = activeAlerts[tipo];
+                alertArea.appendChild(div);
+            }
+        }
 
-        socket.on('alert', function (data) {
-            console.log("Alerta recebido:", data.message);
-
-            const alertList = document.getElementById('alert-list');
-            const alertItem = document.createElement('li');
-            alertItem.className = 'alert-item';
-            alertItem.innerText = data.message;
-            alertList.appendChild(alertItem);
-
+        socket.on('alert', data => {
             setTimeout(() => {
-                if (alertItem.parentNode) {
-                    alertList.removeChild(alertItem);
-                }
-            }, 3000);
+                activeAlerts[data.tipo] = data.message;
+                renderAlerts();
+            }, 1000);
+        });
+
+        socket.on('alert_end', data => {
+            delete activeAlerts[data.tipo];
+            renderAlerts();
         });
     </script>
 </body>
