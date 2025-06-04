@@ -17,10 +17,10 @@ import threading
 # ---------- Configuração SMTP ----------
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SMTP_USER = "miguel12lopes2003@gmail.com"
-SMTP_PASSWORD = os.getenv("SMTP_PASS", "cnsrpyhlylekxpqt")
+SMTP_USER = "@gmail.com"
+SMTP_PASSWORD = os.getenv("SMTP_PASS", "pass")
 FROM_EMAIL = SMTP_USER
-TO_EMAIL = "miguel12lopes2003@gmail.com"
+TO_EMAIL = "@gmail.com"
 
 recorder = None
 
